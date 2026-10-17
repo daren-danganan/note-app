@@ -11,6 +11,10 @@ const previewEl = document.querySelector("#preview");
 const togglePreviewBtn = document.querySelector("#toggle-preview-btn");
 const deleteNoteBtn = document.querySelector("#delete-note-btn");
 const saveStatusEl = document.querySelector("#save-status");
+const confirmDialogEl = document.querySelector("#confirm-dialog");
+const confirmDialogMessageEl = document.querySelector("#confirm-dialog-message");
+const confirmDialogOkBtn = document.querySelector("#confirm-dialog-ok");
+const confirmDialogCancelBtn = document.querySelector("#confirm-dialog-cancel");
 
 let activeNoteId = null;
 let saveTimer = null;
@@ -99,6 +103,35 @@ function setSaveStatus(text) {
   saveStatusEl.textContent = text;
 }
 
+// Custom in-page confirmation modal. WKWebView (the macOS Tauri webview)
+// does not implement the JS dialog UIDelegate by default, so the native
+// `window.confirm()` resolves to `false` immediately instead of showing a
+// dialog and blocking -- it never actually prompts the user. This renders
+// our own modal and resolves once the user picks an option.
+function confirmDialog(message) {
+  return new Promise((resolve) => {
+    confirmDialogMessageEl.textContent = message;
+    confirmDialogEl.classList.remove("hidden");
+
+    function cleanup(result) {
+      confirmDialogEl.classList.add("hidden");
+      confirmDialogOkBtn.removeEventListener("click", onOk);
+      confirmDialogCancelBtn.removeEventListener("click", onCancel);
+      resolve(result);
+    }
+
+    function onOk() {
+      cleanup(true);
+    }
+    function onCancel() {
+      cleanup(false);
+    }
+
+    confirmDialogOkBtn.addEventListener("click", onOk);
+    confirmDialogCancelBtn.addEventListener("click", onCancel);
+  });
+}
+
 const persistNote = debounce(async () => {
   if (!activeNoteId) return;
   await invoke("save_note", { id: activeNoteId, content: editorEl.value });
@@ -128,7 +161,8 @@ togglePreviewBtn.addEventListener("click", () => {
 
 deleteNoteBtn.addEventListener("click", async () => {
   if (!activeNoteId) return;
-  if (!confirm("Delete this note? This cannot be undone.")) return;
+  const confirmed = await confirmDialog("Delete this note? This cannot be undone.");
+  if (!confirmed) return;
   await invoke("delete_note", { id: activeNoteId });
   activeNoteId = null;
   editorEl.value = "";
