@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notes</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="vendor/marked.js"></script>
+    <script type="module" src="app.js" defer></script>
+  </head>
+
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <input id="search-input" type="search" placeholder="Search notes…" autocomplete="off" />
+          <button id="new-note-btn" title="New note" aria-label="New note">+</button>
+        </div>
+        <ul id="note-list" class="note-list"></ul>
+      </aside>
+
+      <main class="editor-pane">
+        <div class="editor-toolbar">
+          <button id="toggle-preview-btn">Preview</button>
+          <button id="delete-note-btn">Delete</button>
+          <span id="save-status" class="save-status"></span>
+        </div>
+        <div class="editor-split">
+          <textarea
+            id="editor"
+            class="editor"
+            placeholder="Start writing in markdown…"
+            spellcheck="false"
+          ></textarea>
+          <div id="preview" class="preview hidden"></div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
