@@ -119,3 +119,90 @@ pub fn delete_note(id: &str) -> Result<(), String> {
     let path = note_path(id)?;
     fs::remove_file(&path).map_err(|e| format!("Failed to delete note: {e}"))
 }
+
+/// Smoke tests for the verify-note-app skill (see
+/// .claude/skills/verify-note-app/SKILL.md). They call the exact functions
+/// the Tauri commands in lib.rs wrap, against the real notes directory
+/// (~/Documents/Notes), so a pass proves the backend + filesystem side
+/// effects a user would see, without needing GUI automation. Every note
+/// they create is tagged and removed again, even on failure/panic.
+#[cfg(test)]
+mod verify_skill_tests {
+    use super::*;
+
+    struct Cleanup(String);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            if let Ok(path) = note_path(&self.0) {
+                let _ = fs::remove_file(path);
+            }
+        }
+    }
+
+    #[test]
+    fn create_list_read_save_delete_round_trip() {
+        let id = create_note().expect("create_note should create a .md file");
+        let _cleanup = Cleanup(id.clone());
+
+        let path = note_path(&id).unwrap();
+        assert!(path.exists(), "create_note did not write {path:?}");
+
+        let listed = list_notes().expect("list_notes should read the notes dir");
+        assert!(
+            listed.iter().any(|n| n.id == id),
+            "new note {id} missing from list_notes output"
+        );
+
+        let marker = "verify-skill-smoke-test content";
+        save_note(&id, &format!("# Verify Skill Smoke\n{marker}")).expect("save_note failed");
+        let content = read_note(&id).expect("read_note failed");
+        assert!(content.contains(marker), "save_note/read_note round trip failed");
+
+        delete_note(&id).expect("delete_note failed");
+        assert!(!path.exists(), "delete_note did not remove {path:?}");
+
+        // Cleanup guard will no-op (file already gone); std::mem::forget avoids
+        // a confusing double-delete attempt in Drop while still exercising it.
+        std::mem::forget(_cleanup);
+    }
+
+    /// Closes the verify-note-app skill's "sort order / title derivation
+    /// only partially tested" gap: proves `list_notes` sorts by mtime
+    /// descending (not creation order or filename), and that the title it
+    /// reports for each note is `derive_title`'s first-non-empty-line
+    /// (with leading `#` stripped), not the raw first line or the id.
+    #[test]
+    fn list_notes_sorts_by_mtime_desc_and_derives_titles_from_headings() {
+        let older_id = create_note().expect("create_note (older) failed");
+        let _cleanup_older = Cleanup(older_id.clone());
+        save_note(&older_id, "# zz-verify-older\nolder body").expect("save_note (older) failed");
+
+        // Force a real, distinct mtime gap instead of relying on two
+        // fs::write calls happening in the same clock tick.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+
+        let newer_id = create_note().expect("create_note (newer) failed");
+        let _cleanup_newer = Cleanup(newer_id.clone());
+        save_note(&newer_id, "# zz-verify-newer\nnewer body").expect("save_note (newer) failed");
+
+        let listed = list_notes().expect("list_notes failed");
+        let newer_pos = listed.iter().position(|n| n.id == newer_id);
+        let older_pos = listed.iter().position(|n| n.id == older_id);
+        assert!(newer_pos.is_some() && older_pos.is_some(), "both notes should be listed");
+        assert!(
+            newer_pos.unwrap() < older_pos.unwrap(),
+            "list_notes should sort the more-recently-modified note ({newer_id}) before the \
+             older one ({older_id}), but got order: {:?}",
+            listed.iter().map(|n| &n.id).collect::<Vec<_>>()
+        );
+
+        let newer_summary = listed.iter().find(|n| n.id == newer_id).unwrap();
+        assert_eq!(
+            newer_summary.title, "zz-verify-newer",
+            "list_notes title should be derive_title's output (heading marker stripped), not \
+             the raw first line or the id"
+        );
+        let older_summary = listed.iter().find(|n| n.id == older_id).unwrap();
+        assert_eq!(older_summary.title, "zz-verify-older");
+    }
+}

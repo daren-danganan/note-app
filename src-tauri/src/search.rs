@@ -54,6 +54,30 @@ pub fn search(query: &str) -> Result<Vec<SearchResult>, String> {
     Ok(results)
 }
 
+/// Smoke test for the verify-note-app skill (see
+/// .claude/skills/verify-note-app/SKILL.md). Exercises the exact `search`
+/// function the `search_notes` Tauri command wraps, against a real note
+/// written to ~/Documents/Notes, then cleans it up.
+#[cfg(test)]
+mod verify_skill_tests {
+    use super::*;
+    use crate::notes;
+
+    #[test]
+    fn search_finds_note_by_content_and_title() {
+        let id = notes::create_note().expect("create_note failed");
+        let needle = "zzverify-search-marker-unlikely-elsewhere";
+        notes::save_note(&id, &format!("# Verify Search\nline with {needle} inside")).unwrap();
+
+        let results = search(needle).expect("search failed");
+        let found = results.iter().any(|r| r.id == id);
+
+        notes::delete_note(&id).expect("cleanup delete_note failed");
+
+        assert!(found, "search_notes did not find the note by content substring");
+    }
+}
+
 fn build_result(id: String, title: String, snippet: String, path: &std::path::Path) -> SearchResult {
     let modified_at = std::fs::metadata(path)
         .and_then(|m| m.modified())
