@@ -319,13 +319,14 @@ const templateCommands = [
   },
 ];
 
-// Insert commands only make sense while the cursor is actually in the note
-// editor (not the search box or the note list) -- otherwise there's no
-// place to insert into. New-note commands are always available regardless
-// of where focus is.
+// Insert commands only make sense while a note is open, edit mode is
+// active (not preview), and the cursor is actually in the note editor (not
+// the search box or the note list) -- otherwise there's no editable place
+// to insert into. New-note commands are always available regardless.
 function buildPaletteCommands(editorWasFocused) {
   const commands = [];
-  if (editorWasFocused && activeNoteId) {
+  const editModeActive = activeNoteId && !previewVisible && editorWasFocused;
+  if (editModeActive) {
     for (const c of insertCommands) commands.push({ ...c, category: "Insert" });
   }
   for (const c of templateCommands) commands.push({ ...c, category: "New Note" });
