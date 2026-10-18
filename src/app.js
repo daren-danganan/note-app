@@ -311,9 +311,13 @@ const templateCommands = [
   },
 ];
 
-function buildPaletteCommands() {
+// Insert commands only make sense while the cursor is actually in the note
+// editor (not the search box or the note list) -- otherwise there's no
+// place to insert into. New-note commands are always available regardless
+// of where focus is.
+function buildPaletteCommands(editorWasFocused) {
   const commands = [];
-  if (activeNoteId) {
+  if (editorWasFocused && activeNoteId) {
     for (const c of insertCommands) commands.push({ ...c, category: "Insert" });
   }
   for (const c of templateCommands) commands.push({ ...c, category: "New Note" });
@@ -323,6 +327,7 @@ function buildPaletteCommands() {
 let paletteCommands = [];
 let paletteFiltered = [];
 let paletteSelectedIndex = 0;
+let paletteReturnFocusEl = null;
 
 function filterPaletteCommands(query) {
   const q = query.trim().toLowerCase();
@@ -373,7 +378,9 @@ function runPaletteCommand(index) {
 }
 
 function openPalette() {
-  paletteCommands = buildPaletteCommands();
+  paletteReturnFocusEl = document.activeElement;
+  const editorWasFocused = paletteReturnFocusEl === editorEl;
+  paletteCommands = buildPaletteCommands(editorWasFocused);
   paletteFiltered = paletteCommands;
   paletteSelectedIndex = 0;
   paletteInputEl.value = "";
@@ -382,9 +389,17 @@ function openPalette() {
   paletteInputEl.focus();
 }
 
+// Returns focus to wherever it was before the palette opened (search box,
+// note list, or editor). A command that runs afterward (insertMarkdown,
+// openNote) focuses the editor itself, overriding this as needed.
 function closePalette() {
   paletteEl.classList.add("hidden");
-  editorEl.focus();
+  if (paletteReturnFocusEl && document.body.contains(paletteReturnFocusEl)) {
+    paletteReturnFocusEl.focus();
+  } else {
+    editorEl.focus();
+  }
+  paletteReturnFocusEl = null;
 }
 
 function isPaletteOpen() {
