@@ -1,6 +1,6 @@
 ---
 name: verify-note-app
-description: Launch, drive, and capture evidence for the note-app Tauri desktop app (create/list/open/edit/delete/search notes, markdown preview). Use when verifying a claim about note-app's behavior.
+description: Launch, drive, and capture evidence for the note-app Tauri desktop app (create/list/open/edit/delete/search notes, markdown preview, command palette). Use when verifying a claim about note-app's behavior.
 ---
 
 # Verify note-app
@@ -24,6 +24,8 @@ behavior and filesystem side effects:
 | typing (debounced) | `save_note` | `save_note` | `notes::save_note` |
 | Delete button | `delete_note` | `delete_note` | `notes::delete_note` |
 | search box | `search_notes` | `search_notes` | `search::search` |
+| Cmd/Ctrl+K palette, "Insert" commands | none (pure textarea DOM edit) | n/a | n/a |
+| Cmd/Ctrl+K palette, "New Note" templates | `create_note` + `save_note` | same as above | same as above |
 
 ## Launch
 
@@ -93,12 +95,23 @@ For typing into the editor, `set focused of e to true` on the `text area`
 element does **not** give it real keyboard focus (keystrokes are silently
 dropped) -- `click e` first, then `delay 0.3`, then `keystroke`. See
 create-note.md and open-edit-note.md for the full proven scripts (create +
-autosave both confirmed working this way). **Delete is not provable via
-this GUI path**: clicking the "Delete" button registers but the frontend's
-blocking `confirm()` dialog never surfaces a native sheet for System Events
-to accept, so `delete_note` never fires -- see delete-note.md for details.
-Use the headless path for delete proof regardless of `gui_automation`
-status.
+autosave both confirmed working this way). **Delete is now provable via
+this GUI path** (re-confirmed 2026-10-18, after commit `ae3428d` replaced
+the old blocking native `confirm()` -- which never surfaced a dialog for
+System Events to accept -- with a custom in-page `#confirm-dialog` modal):
+click the toolbar "Delete" button, then click the dialog's own "Delete"
+button (disambiguate it from the toolbar one, which shares the same name,
+by `position` -- see delete-note.md). The command palette (Cmd/Ctrl+K,
+see command-palette.md) is also GUI-provable the same way, via `keystroke`
+into `#palette-input` rather than clicking a button, since it has no
+on-screen trigger.
+
+**Window-chrome trap**: `button 1`/`2`/`3` of `window "Notes"` with no
+`name` are the native close/minimize/zoom controls, not webview content --
+clicking one quits the app (single-window app, closing it exits). Always
+reach real sidebar/toolbar/dialog elements via `entire contents of window`
++ a `class`/`name`/position filter, never a direct `button N of window`
+index.
 
 Button/field identifiers come from `src/index.html`'s ids/aria-labels
 (`#new-note-btn`, `#search-input`, `#toggle-preview-btn`, `#delete-note-btn`,

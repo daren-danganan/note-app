@@ -19,6 +19,7 @@ access -- see `SKILL.md` Doctor section) or manual reading of `src/app.js`.
 | `delete-note.md` | Delete a note | `delete_note` |
 | `search-notes.md` | Search notes | `search_notes` |
 | `markdown-preview.md` | Markdown preview toggle | none (frontend-only) |
+| `command-palette.md` | Command palette (Cmd/Ctrl+K): insert markdown, new-note templates | `create_note`, `save_note` (templates only; insert commands are frontend-only) |
 
 ## Entry point for all features
 
