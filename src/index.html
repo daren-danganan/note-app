@@ -21,18 +21,18 @@
 
       <main class="editor-pane">
         <div class="editor-toolbar">
-          <button id="toggle-preview-btn">Preview</button>
+          <button id="toggle-preview-btn">Edit</button>
           <button id="delete-note-btn">Delete</button>
           <span id="save-status" class="save-status"></span>
         </div>
         <div class="editor-split">
           <textarea
             id="editor"
-            class="editor"
+            class="editor hidden"
             placeholder="Start writing in markdown…"
             spellcheck="false"
           ></textarea>
-          <div id="preview" class="preview hidden"></div>
+          <div id="preview" class="preview"></div>
         </div>
       </main>
     </div>
