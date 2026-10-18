@@ -22,7 +22,7 @@ const paletteListEl = document.querySelector("#palette-list");
 let activeNoteId = null;
 let saveTimer = null;
 let searchTimer = null;
-let previewVisible = false;
+let previewVisible = true;
 
 function debounce(fn, ms) {
   let timer;
@@ -90,10 +90,9 @@ async function openNote(id) {
   activeNoteId = id;
   const content = await invoke("read_note", { id });
   editorEl.value = content;
-  updatePreview();
+  setPreviewVisible(true);
   setSaveStatus("");
   markActiveInList();
-  editorEl.focus();
 }
 
 function markActiveInList() {
@@ -154,12 +153,21 @@ editorEl.addEventListener("input", () => {
   persistNote();
 });
 
-togglePreviewBtn.addEventListener("click", () => {
-  previewVisible = !previewVisible;
+function setPreviewVisible(visible) {
+  previewVisible = visible;
   previewEl.classList.toggle("hidden", !previewVisible);
   editorEl.classList.toggle("hidden", previewVisible);
   togglePreviewBtn.textContent = previewVisible ? "Edit" : "Preview";
   updatePreview();
+  if (!previewVisible) editorEl.focus();
+}
+
+togglePreviewBtn.addEventListener("click", () => {
+  setPreviewVisible(!previewVisible);
+});
+
+previewEl.addEventListener("click", () => {
+  setPreviewVisible(false);
 });
 
 deleteNoteBtn.addEventListener("click", async () => {
